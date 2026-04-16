@@ -20,6 +20,7 @@ class DoorReleaseCard extends HTMLElement {
     this._visualColors = null;
     this._simDoorOpen = false;
     this._simLastOpenMs = 0;
+    this._resizeObserver = null;
   }
 
   static getStubConfig() {
@@ -70,6 +71,10 @@ class DoorReleaseCard extends HTMLElement {
 
   connectedCallback() {
     this._loadSimulationState();
+    if (!this._resizeObserver && "ResizeObserver" in window) {
+      this._resizeObserver = new ResizeObserver(() => this._render(true));
+      this._resizeObserver.observe(this);
+    }
     this._render(true);
     this._ensureTicker();
   }
@@ -78,6 +83,10 @@ class DoorReleaseCard extends HTMLElement {
     this._stopTicker();
     this._clearArmTimer();
     this._unbindPointerHandlers();
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+      this._resizeObserver = null;
+    }
   }
 
   set hass(hass) {
@@ -91,9 +100,9 @@ class DoorReleaseCard extends HTMLElement {
 
   getGridOptions() {
     return {
-      min_rows: 1,
-      max_rows: 10,
-      min_columns: 4,
+      min_rows: 2,
+      max_rows: 2,
+      min_columns: 12,
       max_columns: 12,
     };
   }
@@ -138,6 +147,7 @@ class DoorReleaseCard extends HTMLElement {
       this._boundUp = null;
     }
   }
+
   _getContactStateObj() {
     if (this._config.simulation_mode) {
       return {
@@ -550,8 +560,9 @@ class DoorReleaseCard extends HTMLElement {
     const isReturning = now < this._returnUntilMs && this._returnUntilMs > this._returnStartMs;
     const returnRatio = this._getReturnRatio(now);
     const sliderRatio = this._dragging ? this._dragRatio : buttonEnabled ? 1 : returnRatio;
-    const containerWidth = Math.max(320, this.clientWidth || this.offsetWidth || 560);
-    const containerHeight = Math.max(120, this.clientHeight || this.offsetHeight || 160);
+    const rect = this.getBoundingClientRect();
+    const containerWidth = Math.max(320, Math.round(rect.width || this.clientWidth || this.offsetWidth || 560));
+    const containerHeight = Math.max(120, Math.round(rect.height || this.clientHeight || this.offsetHeight || 160));
     const compactLayout = containerWidth < 460;
     const tinyLayout = containerWidth < 380;
     const statusWidth = compactLayout
@@ -681,6 +692,7 @@ class DoorReleaseCard extends HTMLElement {
           top: var(--knob-pad);
           left: calc(var(--knob-pad) + (100% - var(--knob-width) - (var(--knob-pad) * 2)) * ${sliderRatio.toFixed(4)});
           width: var(--knob-width);
+          max-width: calc(100% - (var(--knob-pad) * 2));
           height: ${knobHeight}px;
           border-radius: ${knobRadius}px;
           background: ${colors.accent};
