@@ -9,7 +9,10 @@ Custom Lovelace card for Home Assistant to safely trigger a door release workflo
 
 ## Preview
 
-<img src="assets/door-release-card-preview.png" alt="Door Release Card Preview" width="720">
+<p align="center">
+  <img src="assets/door-release-card-preview.png" alt="Door Release Card Preview" width="360">
+</p>
+<p align="center"><sub>Door Release Card in Lovelace</sub></p>
 
 ## Background Idea
 
