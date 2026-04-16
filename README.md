@@ -7,6 +7,10 @@
 
 Custom Lovelace card for Home Assistant to safely trigger a door release workflow with a clear, two-step interaction model.
 
+## Preview
+
+![Door Release Card Preview](assets/door-release-card-preview.png)
+
 ## Background Idea
 
 Typical "open door" actions are too easy to trigger accidentally.  
