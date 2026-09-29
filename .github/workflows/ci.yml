@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: JavaScript syntax check
+        run: node --check door-release-card.js
+      - name: Verify HACS files
+        run: |
+          test -f hacs.json
+          test -f README.md
+          test -f door-release-card.js
