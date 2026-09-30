@@ -28,7 +28,8 @@ This reduces accidental clicks while keeping the UI fast and clear for daily use
 
 ## Highlights
 
-- Slide-to-arm interaction with live feedback: while dragging, the lock opens step by step and knob, track and `Open door` button shift from green to orange
+- Slide-to-arm interaction with live feedback: sliding only enables the button, the door stays locked; while dragging, the `Open door` button turns from grey to green step by step
+- The lock opens only when the door is actually released (red), and closes again afterwards
 - Dedicated confirmation button (`Open door`)
 - Status and last opening text
 - Smooth slider return animation and soft color transitions between states
@@ -46,15 +47,16 @@ This reduces accidental clicks while keeping the UI fast and clear for daily use
 The card has a simple state machine:
 
 - `locked`: normal resting state
-- `unlocked` (armed window): slider is right, open can be confirmed
+- `armed`: slider is right, the door is still locked, `Open door` is enabled for `arm_timeout`
+- `unlocked`: `Open door` was pressed, the door is released
 - `open`: contact entity reports door open
 - `missing`: contact entity not found (if not treated as locked)
 
 Behavior:
 
 1. User drags slider right.
-2. Card enters armed window for `arm_timeout`.
-3. `Open door` is enabled and executes the configured script/service.
+2. The door stays locked; `Open door` turns green and is enabled for `arm_timeout`.
+3. Pressing `Open door` executes the configured script/service; the card turns red and the lock opens.
 4. Slider returns left automatically (`slider_return_ms`) or after timeout.
 5. Status text shows `Opened Xm ago` (or `Xh Ym ago`).
 
@@ -105,7 +107,7 @@ slider_return_ms: 900
 - `treat_missing_as_locked`: fallback behavior for missing contact entity
 - `simulation_mode`: enables local simulation controls
 - `label_locked`, `label_unlocked`, `label_open`, `label_missing`: custom labels for card states (override the built-in English/German texts)
-- `label_armed`: label while armed (defaults to `label_unlocked`)
+- `label_armed`: label while the button is enabled (defaults to `label_locked`, since the door is still locked)
 - `open_button_label`, `last_opened_prefix`, `missing_detail_text`: custom texts
 
 ## Repository Layout
