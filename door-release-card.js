@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.3.0";
+const CARD_VERSION = "1.4.0";
 
 const TRANSLATIONS = {
   en: {
@@ -14,6 +14,7 @@ const TRANSLATIONS = {
     minutes: (m) => `${m}m`,
     hours: (h, m) => `${h}h ${m}m`,
     countdown: (s) => `Auto reset in ${s}s`,
+    ready: (s) => `Ready · ${s}s`,
     failed: "Failed",
     slide_to_arm: "Slide to arm",
     sim_door_open: "Door: Open",
@@ -33,8 +34,9 @@ const TRANSLATIONS = {
     minutes: (m) => `${m} Min.`,
     hours: (h, m) => `${h} Std. ${m} Min.`,
     countdown: (s) => `Sperrt wieder in ${s} s`,
+    ready: (s) => `Freigegeben · ${s} s`,
     failed: "Fehler",
-    slide_to_arm: "Zum Entsperren schieben",
+    slide_to_arm: "Zum Freigeben schieben",
     sim_door_open: "Tür: Offen",
     sim_door_closed: "Tür: Zu",
     sim_pulse: "Motorimpuls",
@@ -51,17 +53,19 @@ function resolveLanguage(config, hass) {
 
 // Stage colors as OKLCH [lightness, chroma, hue]. Animating the three channels separately
 // lets a color change travel around the hue circle instead of fading through a muddy brown.
+// Sliding only enables the button, the door stays locked: "armed" is a brighter green.
 const STAGE_ACCENTS = {
   locked: [0.678, 0.169, 145.8],
-  armed: [0.775, 0.147, 69.8],
+  armed: [0.74, 0.19, 143],
   unlocked: [0.634, 0.164, 28.4],
   open: [0.631, 0.165, 29.2],
   missing: [0.649, 0.015, 262.4],
   loading: [0.649, 0.015, 262.4],
 };
 
-// Waypoint between orange and green; keeps color changes bright instead of olive.
-const BRIGHT_YELLOW = [0.82, 0.16, 100];
+// Waypoints for the way back from red to green; keep the sweep bright instead of olive.
+const SWEEP_ORANGE = [0.775, 0.147, 69.8];
+const SWEEP_YELLOW = [0.82, 0.16, 100];
 
 for (const name of ["--drc-l", "--drc-c", "--drc-h"]) {
   try {
@@ -80,7 +84,8 @@ const CARD_STYLE = `
     --drc-h: ${STAGE_ACCENTS.locked[2]};
     --drc-accent: oklch(var(--drc-l) var(--drc-c) var(--drc-h));
     --drc-card-bg: var(--ha-card-background, var(--card-background-color, #fff));
-    --drc-armed: oklch(${STAGE_ACCENTS.armed.join(" ")});
+    --drc-go: oklch(${STAGE_ACCENTS.armed.join(" ")});
+    --drc-btn-idle: color-mix(in srgb, var(--secondary-text-color, #6b7280) 16%, var(--drc-card-bg));
     --drc-track: color-mix(in srgb, var(--drc-accent) 20%, var(--drc-card-bg));
     /* 72px controls + 12px padding keep the card within the standard 2-row height. */
     --control-h: 72px;
@@ -183,7 +188,7 @@ const CARD_STYLE = `
     box-shadow: 0 0 0 3px var(--drc-card-bg), 0 0 0 5px var(--primary-color, #377cfb);
   }
   .knob.armed {
-    box-shadow: 0 6px 14px rgba(241, 163, 58, 0.35);
+    box-shadow: 0 6px 14px rgba(52, 168, 83, 0.35);
   }
   .lock-icon {
     width: 28px;
@@ -212,8 +217,8 @@ const CARD_STYLE = `
     height: var(--control-h);
     border: none;
     border-radius: 20px;
-    /* While the knob is dragged, the button takes on the armed color step by step. */
-    background-color: color-mix(in srgb, var(--drc-armed) calc(var(--drc-progress, 0) * 55%), var(--drc-track));
+    /* Grey while locked; turns green step by step while the knob is dragged. */
+    background-color: color-mix(in srgb, var(--drc-go) calc(var(--drc-progress, 0) * 70%), var(--drc-btn-idle));
     color: var(--primary-text-color, #101820);
     font: inherit;
     font-size: 16px;
@@ -236,13 +241,13 @@ const CARD_STYLE = `
     box-shadow:
       inset 0 2px 0 rgba(255, 255, 255, 0.4),
       inset 0 0 0 3px rgba(255, 255, 255, 0.56),
-      0 8px 16px rgba(170, 112, 34, 0.34);
+      0 8px 16px rgba(40, 140, 64, 0.34);
   }
   .open-btn.active:hover {
     box-shadow:
       inset 0 2px 0 rgba(255, 255, 255, 0.5),
       inset 0 0 0 3px rgba(255, 255, 255, 0.7),
-      0 10px 18px rgba(170, 112, 34, 0.4);
+      0 10px 18px rgba(40, 140, 64, 0.4);
   }
   .open-btn.active:active {
     transform: translateY(1px) scale(0.99);
@@ -464,7 +469,8 @@ class DoorReleaseCard extends HTMLElement {
       case "open":
         return this._text("label_open", "open");
       case "armed":
-        return this._config.label_armed || this._text("label_unlocked", "unlocked");
+        // Sliding only enables the button; the door itself is still locked.
+        return this._config.label_armed || this._text("label_locked", "locked");
       case "unlocked":
         return this._text("label_unlocked", "unlocked");
       case "missing":
@@ -513,7 +519,7 @@ class DoorReleaseCard extends HTMLElement {
     }
     const countdown = (ms) => this._t.countdown(Math.max(0, Math.ceil(ms / 1000)));
     if (stage === "armed") {
-      return { text: countdown(this._armedUntil - now) };
+      return { text: this._t.ready(Math.max(0, Math.ceil((this._armedUntil - now) / 1000))) };
     }
     if (stage === "unlocked") {
       const left = Math.max(this._returnUntilMs, this._unlockUntil) - now;
@@ -811,7 +817,7 @@ class DoorReleaseCard extends HTMLElement {
     if (!this._dragging) {
       track.style.setProperty("--ratio", String(this._currentRatio(now)));
       button.style.removeProperty("--drc-progress");
-      knob.style.setProperty("--drc-open", armed ? "1" : "0");
+      knob.style.setProperty("--drc-open", stage === "unlocked" || stage === "open" ? "1" : "0");
     }
     knob.classList.toggle("armed", armed);
     if (knob.title !== t.slide_to_arm) {
@@ -828,20 +834,15 @@ class DoorReleaseCard extends HTMLElement {
     this._scheduleTick(now);
   }
 
-  // While dragging, knob, track, lock and button move from the locked look towards the
-  // armed look in step with the slide distance (progress 1 = arm threshold reached).
+  // While dragging, the button turns from grey to green and the knob brightens slightly,
+  // in step with the slide distance (progress 1 = arm threshold reached). The lock stays closed.
   _applyDragProgress(progress) {
-    const p = progress.toFixed(3);
-    this._els.button.style.setProperty("--drc-progress", p);
-    this._els.knob.style.setProperty("--drc-open", p);
+    this._els.button.style.setProperty("--drc-progress", progress.toFixed(3));
     this._accentAnim?.cancel();
-    // Green -> bright yellow -> orange, the same route the colors take on the way back.
-    const [from, to, t] =
-      progress < 0.5
-        ? [STAGE_ACCENTS.locked, BRIGHT_YELLOW, progress * 2]
-        : [BRIGHT_YELLOW, STAGE_ACCENTS.armed, progress * 2 - 1];
+    const from = STAGE_ACCENTS.locked;
+    const to = STAGE_ACCENTS.armed;
     ["--drc-l", "--drc-c", "--drc-h"].forEach((name, i) => {
-      this.style.setProperty(name, String(from[i] + (to[i] - from[i]) * t));
+      this.style.setProperty(name, String(from[i] + (to[i] - from[i]) * progress));
     });
     // Forces the next _setAccent to animate from this in-between color.
     this._accent = "drag";
@@ -873,7 +874,7 @@ class DoorReleaseCard extends HTMLElement {
     const frames = [toFrame(from)];
     let duration = 450;
     if ((prevStage === "unlocked" || prevStage === "open") && stage === "locked") {
-      frames.push(toFrame(STAGE_ACCENTS.armed), toFrame(BRIGHT_YELLOW));
+      frames.push(toFrame(SWEEP_ORANGE), toFrame(SWEEP_YELLOW));
       duration = 1200;
     } else if (prevStage === "armed" && stage === "locked") {
       duration = Math.max(600, this._returnAnimMs);
@@ -902,16 +903,16 @@ const EDITOR_TRANSLATIONS = {
     language: "Language",
     lang_auto: "Automatic (Home Assistant)",
     timing: "Timing",
-    arm_timeout: "Armed for",
+    arm_timeout: "Button enabled for",
     unlock_display_timeout: "Show as unlocked for",
     slider_return_ms: "Slider return animation",
-    arm_threshold: "Slide distance to arm",
+    arm_threshold: "Slide distance to enable the button",
     texts: "Texts",
     texts_helper: "Leave empty to use the default text",
     open_button_label: "Button",
     label_locked: "Locked",
     label_unlocked: "Unlocked",
-    label_armed: "Armed",
+    label_armed: "Button enabled",
     label_open: "Open",
     advanced: "Advanced",
     show_last_changed: "Show time since last door change",
@@ -925,16 +926,16 @@ const EDITOR_TRANSLATIONS = {
     language: "Sprache",
     lang_auto: "Automatisch (Home Assistant)",
     timing: "Zeiten",
-    arm_timeout: "Entsperrt bleiben für",
+    arm_timeout: "Button freigegeben für",
     unlock_display_timeout: "Als entriegelt anzeigen für",
     slider_return_ms: "Rücklauf-Animation des Schiebers",
-    arm_threshold: "Schiebeweg zum Entsperren",
+    arm_threshold: "Schiebeweg zur Freigabe",
     texts: "Texte",
     texts_helper: "Leer lassen für den Standardtext",
     open_button_label: "Button",
     label_locked: "Verriegelt",
     label_unlocked: "Entriegelt",
-    label_armed: "Entsperrt",
+    label_armed: "Button freigegeben",
     label_open: "Offen",
     advanced: "Erweitert",
     show_last_changed: "Zeit seit letzter Türänderung anzeigen",
@@ -961,7 +962,7 @@ const TEXT_DEFAULTS = {
   open_button_label: "open_button",
   label_locked: "locked",
   label_unlocked: "unlocked",
-  label_armed: "unlocked",
+  label_armed: "locked",
   label_open: "open",
 };
 
