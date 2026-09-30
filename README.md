@@ -46,10 +46,10 @@ This reduces accidental clicks while keeping the UI fast and clear for daily use
 
 The card has a simple state machine:
 
-- `locked`: normal resting state
-- `armed`: slider is right, the door is still locked, `Open door` is enabled for `arm_timeout`
-- `unlocked`: `Open door` was pressed, the door is released
-- `open`: contact entity reports door open
+- `locked`: normal resting state, door closed (shown as `Locked`, or `Closed` if `locks_on_close: false`)
+- `armed`: slider is right, the door is still closed, `Open door` is enabled for `arm_timeout`
+- `unlocked`: `Open door` was pressed, the door is released for `unlock_display_timeout`
+- `open`: contact entity reports door open (always wins while the door is open)
 - `missing`: contact entity not found (if not treated as locked)
 
 Behavior:
@@ -58,7 +58,9 @@ Behavior:
 2. The door stays locked; `Open door` turns green and is enabled for `arm_timeout`.
 3. Pressing `Open door` executes the configured script/service; the card turns red and the lock opens.
 4. Slider returns left automatically (`slider_return_ms`) or after timeout.
-5. Status text shows `Opened Xm ago` (or `Xh Ym ago`).
+5. While the contact reports the door open, the card shows `Open`.
+6. As soon as the door falls shut, the card shows `Locked` (self-locking door) or `Closed` (`locks_on_close: false`).
+7. Status text shows `Opened Xm ago` (or `Xh Ym ago`).
 
 ## HACS Installation (Recommended)
 
@@ -97,6 +99,7 @@ slider_return_ms: 900
 - `language`: `en`, `de` or omit for automatic (Home Assistant UI language)
 - `contact_entity`: binary sensor for door contact
 - `open_script`: script to trigger door opening
+- `locks_on_close`: `true` (default) if the door locks itself when it falls shut, shown as `Locked`; `false` for doors that only latch, shown as `Closed`
 - `open_action.service`: alternative to script call (`domain.service`)
 - `open_action.data` / `open_action.target`: optional service data and target
 - `arm_timeout`: seconds the card stays armed

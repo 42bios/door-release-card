@@ -3,6 +3,7 @@ const CARD_VERSION = "1.4.0";
 const TRANSLATIONS = {
   en: {
     locked: "Locked",
+    closed: "Closed",
     unlocked: "Unlocked",
     open: "Open",
     missing: "Entity missing",
@@ -23,6 +24,7 @@ const TRANSLATIONS = {
   },
   de: {
     locked: "Verriegelt",
+    closed: "Geschlossen",
     unlocked: "Entriegelt",
     open: "Offen",
     missing: "Entität fehlt",
@@ -357,6 +359,7 @@ class DoorReleaseCard extends HTMLElement {
       unlock_display_timeout: 5,
       contact_open_state: "on",
       treat_missing_as_locked: true,
+      locks_on_close: true,
       show_last_changed: true,
       slider_return_ms: 900,
       simulation_mode: false,
@@ -437,19 +440,17 @@ class DoorReleaseCard extends HTMLElement {
     if (now < this._armedUntil) {
       return "armed";
     }
-    // Slider returning after "Open door" (not after a plain arm timeout).
-    if (now < this._returnUntilMs && now < this._unlockUntil) {
-      return "unlocked";
-    }
     const entity = this._getContactStateObj();
-    if (!entity) {
-      return this._config.treat_missing_as_locked ? "locked" : "missing";
-    }
-    if (entity.state === this._config.contact_open_state) {
+    // An open door always shows as open.
+    if (entity && entity.state === this._config.contact_open_state) {
       return "open";
     }
+    // Display window after "Open door" (not after a plain arm timeout).
     if (now < this._unlockUntil) {
       return "unlocked";
+    }
+    if (!entity && !this._config.treat_missing_as_locked) {
+      return "missing";
     }
     return "locked";
   }
@@ -469,8 +470,8 @@ class DoorReleaseCard extends HTMLElement {
       case "open":
         return this._text("label_open", "open");
       case "armed":
-        // Sliding only enables the button; the door itself is still locked.
-        return this._config.label_armed || this._text("label_locked", "locked");
+        // Sliding only enables the button; the door itself is still closed.
+        return this._config.label_armed || this._restLabel();
       case "unlocked":
         return this._text("label_unlocked", "unlocked");
       case "missing":
@@ -478,8 +479,13 @@ class DoorReleaseCard extends HTMLElement {
       case "loading":
         return this._t.loading;
       default:
-        return this._text("label_locked", "locked");
+        return this._restLabel();
     }
+  }
+
+  // A closed door is "locked" if it locks itself when it falls shut, otherwise just "closed".
+  _restLabel() {
+    return this._text("label_locked", this._config.locks_on_close === false ? "closed" : "locked");
   }
 
   _formatAgo(timestamp) {
@@ -791,6 +797,14 @@ class DoorReleaseCard extends HTMLElement {
       this._build();
     }
     const now = Date.now();
+    // Once the door has been opened and falls shut again, the unlock display ends:
+    // it is locked (self-locking door) or at least closed again.
+    const contact = this._getContactStateObj();
+    const contactOpen = Boolean(contact) && contact.state === this._config.contact_open_state;
+    if (this._contactWasOpen && !contactOpen) {
+      this._unlockUntil = 0;
+    }
+    this._contactWasOpen = contactOpen;
     const stage = this._getStage(now);
     const armed = stage === "armed";
     const returning = now < this._returnUntilMs;
@@ -915,6 +929,7 @@ const EDITOR_TRANSLATIONS = {
     label_armed: "Button enabled",
     label_open: "Open",
     advanced: "Advanced",
+    locks_on_close: "Door locks itself when it closes",
     show_last_changed: "Show time since last door change",
     treat_missing_as_locked: "Show as locked if contact entity is missing",
     simulation_mode: "Simulation mode (for testing, nothing is triggered)",
@@ -938,6 +953,7 @@ const EDITOR_TRANSLATIONS = {
     label_armed: "Button freigegeben",
     label_open: "Offen",
     advanced: "Erweitert",
+    locks_on_close: "Tür verriegelt beim Schließen automatisch",
     show_last_changed: "Zeit seit letzter Türänderung anzeigen",
     treat_missing_as_locked: "Als verriegelt anzeigen, wenn der Kontakt fehlt",
     simulation_mode: "Simulationsmodus (zum Testen, löst nichts aus)",
@@ -952,6 +968,7 @@ const FORM_DEFAULTS = {
   unlock_display_timeout: 5,
   arm_threshold: 0.5,
   slider_return_ms: 900,
+  locks_on_close: true,
   show_last_changed: true,
   treat_missing_as_locked: true,
   simulation_mode: false,
@@ -1014,10 +1031,16 @@ class DoorReleaseCardEditor extends HTMLElement {
 
   _schema(t) {
     const tr = TRANSLATIONS[resolveLanguage(this._config, this._hass)];
-    const text = (name) => ({ name, selector: { text: {} }, _default: tr[TEXT_DEFAULTS[name]] });
+    const restKey = this._config.locks_on_close === false ? "closed" : "locked";
+    const text = (name) => ({
+      name,
+      selector: { text: {} },
+      _default: tr[TEXT_DEFAULTS[name] === "locked" ? restKey : TEXT_DEFAULTS[name]],
+    });
     return [
       { name: "contact_entity", selector: { entity: { domain: "binary_sensor" } } },
       { name: "open_script", selector: { entity: { domain: "script" } } },
+      { name: "locks_on_close", selector: { boolean: {} } },
       {
         name: "language",
         selector: {
