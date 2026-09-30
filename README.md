@@ -10,16 +10,10 @@ Custom Lovelace card for Home Assistant to safely trigger a door release workflo
 ## Preview
 
 <p align="center">
-  <img src="assets/preview-locked.png" alt="Door Release Card - Locked" width="320"><br>
-  <sub><b>Locked</b></sub>
-</p>
-<p align="center">
-  <img src="assets/preview-unlocked-armed.png" alt="Door Release Card - Unlocked Armed" width="320"><br>
-  <sub><b>Unlocked (armed)</b></sub>
-</p>
-<p align="center">
-  <img src="assets/preview-unlocked-timeout.png" alt="Door Release Card - Unlocked Timeout" width="320"><br>
-  <sub><b>Unlocked (timeout)</b></sub>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/door-release-card-dark.gif">
+    <img src="assets/door-release-card-light.gif" alt="Door Release Card: slide to arm, then press Open door" width="420">
+  </picture>
 </p>
 
 ## Background Idea
@@ -34,14 +28,14 @@ This reduces accidental clicks while keeping the UI fast and clear for daily use
 
 ## Highlights
 
-- Slide-to-arm interaction
+- Slide-to-arm interaction with live feedback: while dragging, the lock opens step by step and knob, track and `Open door` button shift from green to orange
 - Dedicated confirmation button (`Open door`)
 - Status and last opening text
-- Smooth slider return animation
+- Smooth slider return animation and soft color transitions between states
 - English and German, follows the Home Assistant language automatically
 - Simple visual editor: entity pickers, language, and collapsible sections for timing, texts and advanced options
 - Optional simulation mode for testing
-- Fixed control sizes: the slider and `Open door` button never shrink; on narrow cards the status text gives way first
+- Compact layout within the standard 2-row card height; the slider and square `Open door` button never shrink, on narrow cards the status text gives way first
 - Follows the Home Assistant theme (light and dark mode)
 - Keyboard accessible: focus the knob and press `Enter`/`→` to arm, `Esc`/`←` to disarm
 - Shows an error in the status line if the open service call fails
@@ -62,7 +56,7 @@ Behavior:
 2. Card enters armed window for `arm_timeout`.
 3. `Open door` is enabled and executes the configured script/service.
 4. Slider returns left automatically (`slider_return_ms`) or after timeout.
-5. Status text shows `Last opening Xm ago` (or `Xh Ym ago`).
+5. Status text shows `Opened Xm ago` (or `Xh Ym ago`).
 
 ## HACS Installation (Recommended)
 
@@ -124,7 +118,7 @@ slider_return_ms: 900
 
 ## Notes
 
-- Controls keep a fixed size. Below ~390 px card width the status text is hidden; the state is still shown by the knob color and lock icon.
+- Controls keep a fixed size. Below ~320 px card width the status text is hidden; the state is still shown by the knob color and lock icon.
 - Recommended for security-relevant door actions with explicit user confirmation.
 
 ## License

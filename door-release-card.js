@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.2.0";
+const CARD_VERSION = "1.3.0";
 
 const TRANSLATIONS = {
   en: {
@@ -9,7 +9,7 @@ const TRANSLATIONS = {
     missing_detail: "Contact entity missing",
     loading: "Loading",
     open_button: "Open door",
-    last_opened: "Last opening",
+    last_opened: "Opened",
     ago: (d) => `${d} ago`,
     minutes: (m) => `${m}m`,
     hours: (h, m) => `${h}h ${m}m`,
@@ -28,7 +28,7 @@ const TRANSLATIONS = {
     missing_detail: "Türkontakt nicht gefunden",
     loading: "Lädt",
     open_button: "Tür öffnen",
-    last_opened: "Zuletzt geöffnet",
+    last_opened: "Geöffnet",
     ago: (d) => `vor ${d}`,
     minutes: (m) => `${m} Min.`,
     hours: (h, m) => `${h} Std. ${m} Min.`,
@@ -49,32 +49,50 @@ function resolveLanguage(config, hass) {
   return String(wanted).toLowerCase().startsWith("de") ? "de" : "en";
 }
 
+// Stage colors as OKLCH [lightness, chroma, hue]. Animating the three channels separately
+// lets a color change travel around the hue circle instead of fading through a muddy brown.
 const STAGE_ACCENTS = {
-  locked: "#43b252",
-  armed: "#f1a33a",
-  unlocked: "#dc5b4e",
-  open: "#db5a4b",
-  missing: "#8a8f98",
-  loading: "#8a8f98",
+  locked: [0.678, 0.169, 145.8],
+  armed: [0.775, 0.147, 69.8],
+  unlocked: [0.634, 0.164, 28.4],
+  open: [0.631, 0.165, 29.2],
+  missing: [0.649, 0.015, 262.4],
+  loading: [0.649, 0.015, 262.4],
 };
+
+// Waypoint between orange and green; keeps color changes bright instead of olive.
+const BRIGHT_YELLOW = [0.82, 0.16, 100];
+
+for (const name of ["--drc-l", "--drc-c", "--drc-h"]) {
+  try {
+    CSS.registerProperty({ name, syntax: "<number>", inherits: true, initialValue: "0" });
+  } catch (_err) {
+    // Already registered (card loaded twice) or not supported: colors then switch without animation.
+  }
+}
 
 const CARD_STYLE = `
   :host {
     display: block;
     height: 100%;
-    --drc-accent: ${STAGE_ACCENTS.locked};
+    --drc-l: ${STAGE_ACCENTS.locked[0]};
+    --drc-c: ${STAGE_ACCENTS.locked[1]};
+    --drc-h: ${STAGE_ACCENTS.locked[2]};
+    --drc-accent: oklch(var(--drc-l) var(--drc-c) var(--drc-h));
     --drc-card-bg: var(--ha-card-background, var(--card-background-color, #fff));
+    --drc-armed: oklch(${STAGE_ACCENTS.armed.join(" ")});
     --drc-track: color-mix(in srgb, var(--drc-accent) 20%, var(--drc-card-bg));
-    --control-h: 80px;
-    --knob-w: 88px;
-    --btn-w: 136px;
+    /* 72px controls + 12px padding keep the card within the standard 2-row height. */
+    --control-h: 72px;
+    --knob-w: 64px;
+    --btn-w: var(--control-h);
   }
   ha-card {
     display: block;
     height: 100%;
     box-sizing: border-box;
     overflow: hidden;
-    padding: 14px;
+    padding: 12px;
     container-type: inline-size;
   }
   .wrap {
@@ -85,15 +103,16 @@ const CARD_STYLE = `
     min-width: 0;
   }
   .status {
-    /* The status column is the only part that gives way on narrow cards. */
-    flex: 0 1 auto;
-    max-width: 200px;
+    /* Fixed basis so the slider does not shift when the status text changes.
+       The status column is the only part that gives way on narrow cards. */
+    flex: 0 1 124px;
+    max-width: 124px;
     min-width: 0;
     padding-left: 2px;
   }
   .title {
     margin: 0;
-    font-size: 28px;
+    font-size: 22px;
     font-weight: 400;
     color: var(--primary-text-color, #141414);
     white-space: nowrap;
@@ -101,9 +120,9 @@ const CARD_STYLE = `
     text-overflow: ellipsis;
   }
   .detail {
-    margin-top: 6px;
-    min-height: 20px;
-    font-size: 14px;
+    margin-top: 4px;
+    min-height: 18px;
+    font-size: 13px;
     color: var(--secondary-text-color, #4f5561);
     white-space: nowrap;
     overflow: hidden;
@@ -119,13 +138,12 @@ const CARD_STYLE = `
     height: var(--control-h);
     --knob-pad: 4px;
     --ratio: 0;
-    border-radius: 28px;
+    border-radius: 20px;
     background-color: var(--drc-track);
     overflow: hidden;
     touch-action: none;
     user-select: none;
     -webkit-user-select: none;
-    transition: background-color 260ms ease;
   }
   .slider::after {
     content: "";
@@ -141,7 +159,7 @@ const CARD_STYLE = `
     left: calc(var(--knob-pad) + (100% - var(--knob-w) - (var(--knob-pad) * 2)) * var(--ratio));
     width: var(--knob-w);
     height: calc(var(--control-h) - (var(--knob-pad) * 2));
-    border-radius: 24px;
+    border-radius: 16px;
     background-color: var(--drc-accent);
     display: flex;
     align-items: center;
@@ -149,14 +167,13 @@ const CARD_STYLE = `
     color: #fff;
     transition:
       left var(--drc-knob-ms, 180ms) cubic-bezier(0.2, 0.82, 0.28, 1),
-      background-color 220ms ease,
       box-shadow 220ms ease;
     box-shadow: 0 5px 12px rgba(0, 0, 0, 0.14);
     cursor: grab;
     outline: none;
   }
   .slider.dragging .knob {
-    transition: background-color 220ms ease, box-shadow 220ms ease;
+    transition: box-shadow 220ms ease;
     cursor: grabbing;
   }
   .slider.disabled .knob {
@@ -169,26 +186,42 @@ const CARD_STYLE = `
     box-shadow: 0 6px 14px rgba(241, 163, 58, 0.35);
   }
   .lock-icon {
-    --mdc-icon-size: 28px;
+    width: 28px;
+    height: 28px;
     color: #fff;
+    overflow: visible;
     filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.18));
     pointer-events: none;
+  }
+  /* The shackle lifts step by step while the knob is dragged towards the button. */
+  .lock-shackle {
+    transform-box: view-box;
+    transform-origin: 8px 14px;
+    transform: translateY(calc(var(--drc-open, 0) * -3px)) rotate(calc(var(--drc-open, 0) * -14deg));
+    transition: transform 260ms cubic-bezier(0.2, 0.82, 0.28, 1);
+  }
+  .slider.dragging .lock-shackle {
+    transition: none;
+  }
+  .lock-keyhole {
+    fill: var(--drc-accent);
   }
   .open-btn {
     flex: 0 0 var(--btn-w);
     width: var(--btn-w);
     height: var(--control-h);
     border: none;
-    border-radius: 24px;
-    background-color: var(--drc-track);
+    border-radius: 20px;
+    /* While the knob is dragged, the button takes on the armed color step by step. */
+    background-color: color-mix(in srgb, var(--drc-armed) calc(var(--drc-progress, 0) * 55%), var(--drc-track));
     color: var(--primary-text-color, #101820);
     font: inherit;
-    font-size: 18px;
-    line-height: 1.15;
-    padding: 0 10px;
+    font-size: 16px;
+    line-height: 1.2;
+    padding: 0 6px;
     font-weight: 500;
     cursor: not-allowed;
-    opacity: 0.72;
+    opacity: calc(0.72 + var(--drc-progress, 0) * 0.28);
     box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.52);
     transition: background-color 220ms ease, color 220ms ease, opacity 220ms ease,
       box-shadow 220ms ease, transform 120ms ease;
@@ -238,28 +271,20 @@ const CARD_STYLE = `
     color: var(--primary-text-color, #1f2937);
   }
   /* Narrow cards: the status text gives way first, the button always keeps its size. */
-  @container (max-width: 420px) {
+  @container (max-width: 340px) {
     .wrap {
-      --knob-w: 72px;
+      --knob-w: 56px;
     }
     .status {
-      max-width: 110px;
+      max-width: 100px;
     }
     .title {
-      font-size: 22px;
+      font-size: 20px;
     }
   }
-  @container (max-width: 360px) {
+  @container (max-width: 290px) {
     .status {
       display: none;
-    }
-  }
-  @container (max-width: 280px) {
-    .wrap {
-      --btn-w: 112px;
-    }
-    .open-btn {
-      font-size: 16px;
     }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -407,7 +432,8 @@ class DoorReleaseCard extends HTMLElement {
     if (now < this._armedUntil) {
       return "armed";
     }
-    if (now < this._returnUntilMs) {
+    // Slider returning after "Open door" (not after a plain arm timeout).
+    if (now < this._returnUntilMs && now < this._unlockUntil) {
       return "unlocked";
     }
     const entity = this._getContactStateObj();
@@ -585,6 +611,10 @@ class DoorReleaseCard extends HTMLElement {
     this._update();
   }
 
+  _threshold() {
+    return Math.max(0.3, Math.min(0.95, Number(this._config.arm_threshold) || 0.5));
+  }
+
   _canInteract() {
     const stage = this._getStage();
     return stage !== "missing" && stage !== "loading";
@@ -621,6 +651,7 @@ class DoorReleaseCard extends HTMLElement {
       return;
     }
     this._dragRatio = Math.max(0, Math.min(1, this._getPointerRatio(event) - this._dragOffset));
+    this._applyDragProgress(Math.min(1, this._dragRatio / this._threshold()));
     this._els.track.style.setProperty("--ratio", this._dragRatio.toFixed(4));
   }
 
@@ -630,8 +661,7 @@ class DoorReleaseCard extends HTMLElement {
     }
     this._dragging = false;
     this._dragPointerId = null;
-    const threshold = Math.max(0.3, Math.min(0.95, Number(this._config.arm_threshold) || 0.5));
-    if (event.type !== "pointercancel" && this._dragRatio >= threshold) {
+    if (event.type !== "pointercancel" && this._dragRatio >= this._threshold()) {
       this._arm();
     } else {
       this._disarm();
@@ -706,7 +736,12 @@ class DoorReleaseCard extends HTMLElement {
           </div>
           <div class="slider">
             <div class="knob" role="switch" tabindex="0">
-              <ha-icon class="lock-icon"></ha-icon>
+              <svg class="lock-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path class="lock-shackle" d="M8 14V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor"
+                  stroke-width="2.2" stroke-linecap="round" />
+                <rect x="4.5" y="11" width="15" height="10.5" rx="2.5" fill="currentColor" />
+                <path class="lock-keyhole" d="M12 13.9a1.7 1.7 0 0 1 .85 3.17v1.63h-1.7v-1.63A1.7 1.7 0 0 1 12 13.9z" />
+              </svg>
             </div>
           </div>
           <button class="open-btn" type="button" disabled></button>
@@ -722,7 +757,6 @@ class DoorReleaseCard extends HTMLElement {
       simPulse: $('[data-sim="pulse"]'),
       track: $(".slider"),
       knob: $(".knob"),
-      icon: $(".lock-icon"),
       button: $(".open-btn"),
     };
     const { knob, button, simDoor } = this._els;
@@ -754,10 +788,12 @@ class DoorReleaseCard extends HTMLElement {
     const stage = this._getStage(now);
     const armed = stage === "armed";
     const returning = now < this._returnUntilMs;
-    const { title, detail, sim, simDoor, simPulse, track, knob, icon, button } = this._els;
+    const { title, detail, sim, simDoor, simPulse, track, knob, button } = this._els;
     const t = this._t;
 
-    this.style.setProperty("--drc-accent", STAGE_ACCENTS[stage] ?? STAGE_ACCENTS.locked);
+    if (!this._dragging) {
+      this._setAccent(stage);
+    }
 
     this._setText(title, this._getStageLabel(stage));
     const status = this._getStatusDetail(stage, now);
@@ -774,6 +810,8 @@ class DoorReleaseCard extends HTMLElement {
     track.style.setProperty("--drc-knob-ms", `${returning ? this._returnAnimMs : 180}ms`);
     if (!this._dragging) {
       track.style.setProperty("--ratio", String(this._currentRatio(now)));
+      button.style.removeProperty("--drc-progress");
+      knob.style.setProperty("--drc-open", armed ? "1" : "0");
     }
     knob.classList.toggle("armed", armed);
     if (knob.title !== t.slide_to_arm) {
@@ -782,17 +820,66 @@ class DoorReleaseCard extends HTMLElement {
     }
     knob.setAttribute("aria-checked", String(armed));
     knob.setAttribute("aria-disabled", String(!interactive));
-    const lockIcon =
-      armed || stage === "unlocked" || stage === "open" ? "mdi:lock-open-variant-outline" : "mdi:lock-outline";
-    if (icon.getAttribute("icon") !== lockIcon) {
-      icon.setAttribute("icon", lockIcon);
-    }
 
     this._setText(button, this._text("open_button_label", "open_button"));
     button.disabled = !armed;
     button.classList.toggle("active", armed);
 
     this._scheduleTick(now);
+  }
+
+  // While dragging, knob, track, lock and button move from the locked look towards the
+  // armed look in step with the slide distance (progress 1 = arm threshold reached).
+  _applyDragProgress(progress) {
+    const p = progress.toFixed(3);
+    this._els.button.style.setProperty("--drc-progress", p);
+    this._els.knob.style.setProperty("--drc-open", p);
+    this._accentAnim?.cancel();
+    // Green -> bright yellow -> orange, the same route the colors take on the way back.
+    const [from, to, t] =
+      progress < 0.5
+        ? [STAGE_ACCENTS.locked, BRIGHT_YELLOW, progress * 2]
+        : [BRIGHT_YELLOW, STAGE_ACCENTS.armed, progress * 2 - 1];
+    ["--drc-l", "--drc-c", "--drc-h"].forEach((name, i) => {
+      this.style.setProperty(name, String(from[i] + (to[i] - from[i]) * t));
+    });
+    // Forces the next _setAccent to animate from this in-between color.
+    this._accent = "drag";
+  }
+
+  _setAccent(stage) {
+    const target = STAGE_ACCENTS[stage] ?? STAGE_ACCENTS.locked;
+    const prevStage = this._accentStage;
+    if (this._accent === target) {
+      return;
+    }
+    this._accentStage = stage;
+    const toFrame = ([l, c, h]) => ({ "--drc-l": String(l), "--drc-c": String(c), "--drc-h": String(h) });
+    const computed = getComputedStyle(this);
+    const from = ["--drc-l", "--drc-c", "--drc-h"].map((name) => parseFloat(computed.getPropertyValue(name)));
+    // No animation for the first paint or when leaving the grey loading / missing state.
+    const first = !this._accent || prevStage === "loading" || prevStage === "missing";
+    this._accent = target;
+    const frame = toFrame(target);
+    for (const [name, value] of Object.entries(frame)) {
+      this.style.setProperty(name, value);
+    }
+    this._accentAnim?.cancel();
+    if (first || !this.animate || from.some((v) => !Number.isFinite(v)) || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+    // Going back to locked is a slow, calm fade. From red it sweeps through bright orange
+    // and yellow (the stages in reverse) instead of passing through a dark olive.
+    const frames = [toFrame(from)];
+    let duration = 450;
+    if ((prevStage === "unlocked" || prevStage === "open") && stage === "locked") {
+      frames.push(toFrame(STAGE_ACCENTS.armed), toFrame(BRIGHT_YELLOW));
+      duration = 1200;
+    } else if (prevStage === "armed" && stage === "locked") {
+      duration = Math.max(600, this._returnAnimMs);
+    }
+    frames.push(frame);
+    this._accentAnim = this.animate(frames, { duration, easing: "ease-in-out" });
   }
 
   _scheduleTick(now) {
