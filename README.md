@@ -126,6 +126,10 @@ slider_return_ms: 900
 - Controls keep a fixed size. Below ~320 px card width the status text is hidden; the state is still shown by the knob color and lock icon.
 - Recommended for security-relevant door actions with explicit user confirmation.
 
+## Support
+- Issues: https://github.com/42bios/door-release-card/issues
+- Releases: https://github.com/42bios/door-release-card/releases
+
 ## License
 
 MIT - see [LICENSE](LICENSE).
