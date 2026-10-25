@@ -28,14 +28,6 @@ This card adds an intentional safety flow:
 
 This reduces accidental clicks while keeping the UI fast and clear for daily use.
 
-<a href="https://www.buymeacoffee.com/42bios">
-  <img
-    src="https://cdn.buymeacoffee.com/buttons/v2/arial-yellow.png"
-    alt="Buy Me a Coffee"
-    width="180"
-  />
-</a>
-
 ## Highlights
 
 - Slide-to-arm interaction with live feedback: sliding only enables the button, the door stays locked; while dragging, the `Open door` button turns from grey to green step by step
@@ -136,9 +128,15 @@ slider_return_ms: 900
 
 ## Support
 
-If you find this project useful, you can [buy me a coffee](https://buymeacoffee.com/42bios) to support development and testing.
-
 - Issues: https://github.com/42bios/door-release-card/issues
+
+<a href="https://www.buymeacoffee.com/42bios">
+  <img
+    src="https://cdn.buymeacoffee.com/buttons/v2/arial-yellow.png"
+    alt="Buy Me a Coffee"
+    width="140"
+  />
+</a>
 
 ## License
 
