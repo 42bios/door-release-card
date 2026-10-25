@@ -132,7 +132,6 @@ slider_return_ms: 900
 If you find this project useful, you can [buy me a coffee](https://buymeacoffee.com/42bios) to support development and testing.
 
 - Issues: https://github.com/42bios/door-release-card/issues
-- Releases: https://github.com/42bios/door-release-card/releases
 
 ## License
 
