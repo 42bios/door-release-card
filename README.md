@@ -8,6 +8,8 @@
 
 Custom Lovelace card for Home Assistant to safely trigger a door release workflow with a clear, two-step interaction model.
 
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=42bios&repository=door-release-card&category=plugin)
+
 ## Preview
 
 <p align="center">
@@ -64,8 +66,6 @@ Behavior:
 7. Status text shows `Opened Xm ago` (or `Xh Ym ago`).
 
 ## HACS Installation (Recommended)
-
-[![Open your Home Assistant instance and open the Door Release Card repository inside HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=42bios&repository=door-release-card&category=plugin)
 
 1. Open HACS in Home Assistant.
 2. Go to `Dashboard`.
