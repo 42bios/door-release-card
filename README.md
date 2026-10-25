@@ -2,14 +2,11 @@
 
 [![CI](https://github.com/42bios/door-release-card/actions/workflows/ci.yml/badge.svg)](https://github.com/42bios/door-release-card/actions/workflows/ci.yml)
 [![HACS](https://github.com/42bios/door-release-card/actions/workflows/hacs-validate.yml/badge.svg)](https://github.com/42bios/door-release-card/actions/workflows/hacs-validate.yml)
-![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange)
+![HACS Custom](https://img.shields.io/badge/HACS-Custom-blue)
 [![Release](https://img.shields.io/github/v/release/42bios/door-release-card)](https://github.com/42bios/door-release-card/releases)
+[![buy me a coffee – donate](https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow?style=flat)](https://buymeacoffee.com/42bios)
 
 Custom Lovelace card for Home Assistant to safely trigger a door release workflow with a clear, two-step interaction model.
-
-If you find this project useful, you can support its development and testing by buying me a coffee.
-
-[![buy me a coffee – donate](https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow?style=flat-square)](https://buymeacoffee.com/42bios)
 
 ## Preview
 
@@ -131,6 +128,9 @@ slider_return_ms: 900
 - Recommended for security-relevant door actions with explicit user confirmation.
 
 ## Support
+
+If you find this project useful, you can [buy me a coffee](https://buymeacoffee.com/42bios) to support development and testing.
+
 - Issues: https://github.com/42bios/door-release-card/issues
 - Releases: https://github.com/42bios/door-release-card/releases
 
