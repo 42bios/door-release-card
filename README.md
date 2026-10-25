@@ -9,14 +9,6 @@ Custom Lovelace card for Home Assistant to safely trigger a door release workflo
 
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=42bios&repository=door-release-card&category=plugin)
 
-<a href="https://www.buymeacoffee.com/42bios">
-  <img
-    src="https://cdn.buymeacoffee.com/buttons/v2/arial-yellow.png"
-    alt="Buy Me a Coffee"
-    width="180"
-  />
-</a>
-
 ## Preview
 
 <p align="center">
@@ -35,6 +27,14 @@ This card adds an intentional safety flow:
 2. Confirm by pressing `Open door`.
 
 This reduces accidental clicks while keeping the UI fast and clear for daily use.
+
+<a href="https://www.buymeacoffee.com/42bios">
+  <img
+    src="https://cdn.buymeacoffee.com/buttons/v2/arial-yellow.png"
+    alt="Buy Me a Coffee"
+    width="180"
+  />
+</a>
 
 ## Highlights
 
